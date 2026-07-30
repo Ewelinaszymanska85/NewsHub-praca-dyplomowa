@@ -1,0 +1,58 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: newshub
+      POSTGRES_USER: newshub_user
+      POSTGRES_PASSWORD: newshub_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_HOST=db
+      - REDIS_HOST=redis
+
+  celery_worker:
+    build: .
+    command: celery -A core worker -l INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_HOST=db
+      - REDIS_HOST=redis
+
+  celery_beat:
+    build: .
+    command: celery -A core beat -l INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_HOST=db
+      - REDIS_HOST=redis
+
+volumes:
+  postgres_data:
