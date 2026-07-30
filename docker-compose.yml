@@ -18,7 +18,7 @@ services:
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 
     volumes:
       - .:/app
     ports:
@@ -29,6 +29,8 @@ services:
     environment:
       - DATABASE_HOST=db
       - REDIS_HOST=redis
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1 
 
   celery_worker:
     build: .
