@@ -9,6 +9,7 @@ from .models import Article, Category, Tag, Like
 from .serializers import ArticleSerializer, CategorySerializer, TagSerializer
 
 
+@extend_schema(tags=["Artykuły"]) 
 class ArticleViewSet(viewsets.ModelViewSet):
     """
     API endpoint do przeglądania i zarządzania artykułami.
@@ -70,12 +71,20 @@ class ArticleViewSet(viewsets.ModelViewSet):
         serializer.save(status="PENDING", submitted_by=self.request.user)
 
 
+@extend_schema(tags=["Kategorie"])
 class CategoryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint do przeglądania i zarządzania kategoriami artykułów.
+    """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
+@extend_schema(tags=["Tagi"])
 class TagViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint do przeglądania i zarządzania tagami artykułów.
+    """
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
 
