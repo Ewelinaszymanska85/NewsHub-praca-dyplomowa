@@ -74,14 +74,14 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
+   'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'newshub',
-        'USER': 'newshub_user',
-        'PASSWORD': 'newshub_pass',
+        'NAME': os.environ.get('DB_NAME', 'newshub'),
+        'USER': os.environ.get('DB_USER', 'newshub_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'newshub_pass'),
         'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
-        'PORT': '5432',
-    }
+        'PORT': os.environ.get('DB_PORT', '5432'),  
+    } 
 }
 
 
@@ -172,6 +172,16 @@ CACHES = {
 CELERY_BROKER_URL = f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:6379/0"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+# Routing zadań do konkretnych kolejek - zadania pobierania RSS trafiają
+# do osobnej kolejki "rss", żeby nie konkurowały o workera z innymi,
+# potencjalnie szybszymi zadaniami w tle
+CELERY_TASK_ROUTES = {
+    'sources.tasks.*': {'queue': 'rss'},
+}
+
+# Domyślna kolejka dla zadań, które nie mają jawnie przypisanej kolejki
+CELERY_TASK_DEFAULT_QUEUE = 'default'
 
 CELERY_BEAT_SCHEDULE = {
     'fetch-rss-every-30-min': {

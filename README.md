@@ -17,7 +17,7 @@ zatwierdzenia przez administratora, zanim stanie się publicznie widoczne.
 - Automatyczne powiadomienia (sygnał Django) o nowych zgłoszeniach do moderacji
 - Cache list artykułów
 - W pełni udokumentowane REST API (Swagger UI / drf-spectacular)
-- Testy jednostkowe i integracyjne
+- Testy jednostkowe i integracyjne (33 testy pokrywające modele, API, autoryzację, moderację i walidację danych) 
 
 ## Stos technologiczny
 
@@ -95,7 +95,7 @@ Celery Beat automatycznie pobiera artykuły z aktywnych źródeł co 30 minut.
 ## Uruchamianie testów
 
 ```bash
-docker exec -it newshub-web-1 python manage.py test articles
+docker exec -it newshub-web-1 python manage.py test 
 ```
 
 ## Struktura projektu
@@ -116,6 +116,22 @@ newshub/
 Pełna dokumentacja projektowa (grupa docelowa, model domenowy, wymagania
 niefunkcjonalne, roadmap) znajduje się w `plan_projektu.md` w głównym
 folderze repozytorium.
+
+## Decyzje projektowe i własny research
+
+- **Czas życia tokenów JWT** — access token ustawiony na 30 minut (a nie
+  domyślne 5), refresh token na 7 dni. Kompromis między bezpieczeństwem
+  (krótszy access token ogranicza okno na jego nadużycie) a wygodą
+  użytkownika (nie trzeba się logować co kilka minut).
+- **Redis jako backend cache** zamiast domyślnego `LocMemCache` — Django
+  z Gunicornem uruchamia wiele procesów roboczych (`--workers 3`), z
+  których każdy miałby WŁASNĄ, osobną pamięć podręczną przy `LocMemCache`.
+  Redis jest zewnętrznym, współdzielonym magazynem, więc cache działa
+  spójnie niezależnie od tego, który worker obsłużył dane żądanie.
+- **Idempotencja pobierania RSS** — zadanie `fetch_feed` sprawdza istnienie
+  artykułu po `source_url` przed utworzeniem nowego wpisu, dzięki czemu
+  wielokrotne uruchomienie tego samego zadania (np. przy błędzie sieci
+  i ponownej próbie) nie tworzy duplikatów artykułów.
 
 ## Autor
 
