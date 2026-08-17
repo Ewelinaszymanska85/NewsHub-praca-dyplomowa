@@ -1,5 +1,7 @@
 from django.test import TestCase
-from ..models import Article, Category, Notification 
+from django.contrib.auth.models import User
+from django.db import IntegrityError
+from ..models import Article, Category, Notification, UserProfile 
 
 
 class ArticleModelTests(TestCase):
@@ -53,3 +55,39 @@ class NotificationModelTests(TestCase):
         notifications = list(Notification.objects.all())
         self.assertEqual(notifications[0], second)
         self.assertEqual(notifications[1], first) 
+        
+class UserProfileModelTests(TestCase):
+    """
+    Testy modelu UserProfile - relacja OneToOne z User.
+    """
+
+    def test_userprofile_creation_and_one_to_one_relation(self):
+        """
+        Sprawdza poprawność relacji OneToOne - profil jest powiązany
+        z dokładnie jednym użytkownikiem, dostępnym z obu stron relacji.
+        """
+        user = User.objects.create_user(username="profil_user", password="TestPass123!")
+        profile = UserProfile.objects.create(user=user, bio="Testowy opis użytkownika")
+
+        self.assertEqual(profile.user, user)
+        # Dzięki related_name="profile", z poziomu User można dotrzeć
+        # do jego profilu w drugą stronę relacji
+        self.assertEqual(user.profile, profile)
+
+    def test_userprofile_string_representation(self):
+        """__str__ powinien zawierać nazwę użytkownika."""
+        user = User.objects.create_user(username="anna_test", password="TestPass123!")
+        profile = UserProfile.objects.create(user=user)
+
+        self.assertEqual(str(profile), "Profil anna_test")
+
+    def test_user_can_have_only_one_profile(self):
+        """
+        Relacja OneToOne wymusza unikalność - nie można utworzyć
+        drugiego profilu dla tego samego użytkownika.
+        """
+        user = User.objects.create_user(username="jeden_profil", password="TestPass123!")
+        UserProfile.objects.create(user=user)
+
+        with self.assertRaises(IntegrityError):
+            UserProfile.objects.create(user=user)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Tag, Article, Like, Notification
+from .models import Category, Tag, Article, Like, Notification, UserProfile
 
 
 @admin.action(description="Zatwierdź zaznaczone artykuły")
@@ -26,3 +26,4 @@ admin.site.register(Category)
 admin.site.register(Tag)
 admin.site.register(Like)
 admin.site.register(Notification) 
+admin.site.register(UserProfile) 

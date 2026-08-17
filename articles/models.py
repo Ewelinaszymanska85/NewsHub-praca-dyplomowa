@@ -152,3 +152,36 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.message 
+    
+class UserProfile(models.Model):
+    """
+    Rozszerzenie standardowego modelu User o dodatkowe dane profilowe.
+
+    Django's User model jest częścią frameworka i nie powinien być
+    modyfikowany bezpośrednio - standardową praktyką jest dodanie
+    osobnego modelu w relacji OneToOne, powiązanego z User.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+        verbose_name="Użytkownik",
+    )
+    bio = models.TextField(
+        blank=True,
+        verbose_name="O mnie",
+        help_text="Krótki opis użytkownika, widoczny przy zgłaszanych artykułach.",
+    )
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        blank=True,
+        null=True,
+        verbose_name="Avatar",
+    )
+
+    class Meta:
+        verbose_name = "Profil użytkownika"
+        verbose_name_plural = "Profile użytkowników"
+
+    def __str__(self):
+        return f"Profil {self.user.username}"
