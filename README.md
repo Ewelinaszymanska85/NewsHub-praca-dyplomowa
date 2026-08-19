@@ -17,11 +17,13 @@ zatwierdzenia przez administratora, zanim stanie się publicznie widoczne.
 - Automatyczne powiadomienia (sygnał Django) o nowych zgłoszeniach do moderacji
 - Cache list artykułów
 - W pełni udokumentowane REST API (Swagger UI / drf-spectacular)
-- Testy jednostkowe i integracyjne (33 testy pokrywające modele, API, autoryzację, moderację i walidację danych) 
+- GraphQL API umożliwiające elastyczne pobieranie artykułów i powiązanych danych
+- Testy jednostkowe i integracyjne (41 testów pokrywających modele, API, autoryzację, moderację, GraphQL i walidację danych) 
 
 ## Stos technologiczny
 
 - **Backend:** Django 6.0, Django REST Framework
+- **GraphQL API:** Strawberry GraphQL + Strawberry GraphQL Django
 - **Baza danych:** PostgreSQL 16
 - **Broker / cache:** Redis
 - **Zadania w tle:** Celery + Celery Beat
@@ -74,6 +76,46 @@ Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
 | `/api/auth/users/` | Rejestracja użytkownika (Djoser) |
 | `/api/auth/jwt/create/` | Logowanie — pobranie tokenu JWT |
 | `/api/schema/swagger-ui/` | Interaktywna dokumentacja API (Swagger) |
+| `/graphql/` | Interaktywny endpoint GraphQL (GraphiQL) |
+
+## GraphQL API
+
+Oprócz REST API projekt udostępnia endpoint GraphQL zbudowany przy użyciu
+Strawberry GraphQL.
+
+Interaktywny interfejs GraphiQL jest dostępny pod adresem:
+
+`http://127.0.0.1:8000/graphql/`
+
+Przykładowe zapytanie:
+
+```graphql
+query {
+  articles {
+    id
+    title
+    status
+    publishedAt
+    category {
+      id
+      name
+    }
+    tags {
+      id
+      name
+    }
+    source {
+      id
+      name
+      rssUrl
+      isActive
+    }
+  }
+}
+```
+
+GraphQL pozwala klientowi określić, które pola i powiązane dane mają zostać
+zwrócone przez API. Endpoint GraphQL działa równolegle z istniejącym REST API.
 
 ## Dodawanie źródeł RSS
 
@@ -106,6 +148,7 @@ newshub/
 ├── articles/          # Modele Article, Category, Tag, Like, Notification
 │   └── tests/         # Testy jednostkowe i integracyjne
 ├── sources/           # Model Source, zadania Celery pobierające RSS
+├── graphql_api/       # Schemat i konfiguracja GraphQL
 ├── docker-compose.yml # Definicja kontenerów (web, db, redis, celery worker/beat)
 ├── Dockerfile
 └── requirements.txt
