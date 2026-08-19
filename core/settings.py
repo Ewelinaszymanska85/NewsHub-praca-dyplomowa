@@ -6,9 +6,12 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from celery.schedules import crontab
+from dotenv import load_dotenv
 
 # Ścieżki wewnątrz projektu buduje się tak: BASE_DIR / 'podkatalog'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 
 # UWAGA BEZPIECZEŃSTWA: klucz sekretny używany na produkcji musi pozostać tajny!
@@ -36,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'djoser',
     'drf_spectacular',
+    'strawberry_django',
     'articles',
     'sources',
 ]
