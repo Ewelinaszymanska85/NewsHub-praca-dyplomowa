@@ -155,41 +155,37 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-
-# Cache (Redis - współdzielony między wszystkimi workerami Gunicorna,
-# w przeciwieństwie do domyślnego LocMemCache, który jest osobny dla
-# każdego procesu)
+# Redis / cache
+REDIS_URL = os.environ.get(
+    "REDIS_URL",
+    f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:6379"
+)
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:6379/1",
+        "LOCATION": f"{REDIS_URL}/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        },
     }
 }
 
 
-# Celery (broker Redis, harmonogram cyklicznego pobierania RSS)
+# Celery
+CELERY_BROKER_URL = f"{REDIS_URL}/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
 
-CELERY_BROKER_URL = f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:6379/0"
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-
-# Routing zadań do konkretnych kolejek - zadania pobierania RSS trafiają
-# do osobnej kolejki "rss", żeby nie konkurowały o workera z innymi,
-# potencjalnie szybszymi zadaniami w tle
 CELERY_TASK_ROUTES = {
-    'sources.tasks.*': {'queue': 'rss'},
+    "sources.tasks.*": {"queue": "rss"},
 }
 
-# Domyślna kolejka dla zadań, które nie mają jawnie przypisanej kolejki
-CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_DEFAULT_QUEUE = "default"
 
 CELERY_BEAT_SCHEDULE = {
-    'fetch-rss-every-30-min': {
-        'task': 'sources.tasks.fetch_all_active_feeds',
-        'schedule': crontab(minute='*/30'),
+    "fetch-rss-every-30-min": {
+        "task": "sources.tasks.fetch_all_active_feeds",
+        "schedule": crontab(minute="*/30"),
     },
-} 
+}
