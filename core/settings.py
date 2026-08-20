@@ -23,7 +23,15 @@ SECRET_KEY = os.environ.get(
 # UWAGA BEZPIECZEŃSTWA: nie uruchamiaj z debug włączonym na produkcji!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get(
+    'ALLOWED_HOSTS', 
+    'localhost,127.0.0.1'
+    ).split(',')
+
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost"
+).split(",")
 
 
 # Definicja aplikacji
