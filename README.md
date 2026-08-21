@@ -30,6 +30,8 @@ zatwierdzenia przez administratora, zanim stanie się publicznie widoczne.
 - **Uwierzytelnianie:** djangorestframework-simplejwt + Djoser
 - **Dokumentacja API:** drf-spectacular
 - **Konteneryzacja:** Docker + Docker Compose
+- **Deployment:** Railway
+- **Serwer aplikacji:** Gunicorn
 
 ## Model domenowy
 
@@ -41,6 +43,7 @@ zatwierdzenia przez administratora, zanim stanie się publicznie widoczne.
 | `Article` | Artykuł — pochodzący z RSS albo zgłoszony przez użytkownika |
 | `Like` | Polubienie artykułu przez użytkownika (relacja M:N przez tabelę pośrednią) |
 | `Notification` | Powiadomienie tworzone automatycznie przez sygnał `post_save` |
+
 
 ## Uruchomienie projektu (Docker)
 
@@ -63,6 +66,40 @@ docker exec -it newshub-web-1 python manage.py createsuperuser
 
 Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
 
+## Wdrożenie produkcyjne
+
+Aplikacja NewsHub została wdrożona na platformie Railway.
+
+**Publiczny adres aplikacji:**  
+https://newshub-praca-dyplomowa-production.up.railway.app
+
+**Swagger UI:**  
+https://newshub-praca-dyplomowa-production.up.railway.app/api/schema/swagger-ui/
+
+**GraphQL / GraphiQL:**  
+https://newshub-praca-dyplomowa-production.up.railway.app/graphql/
+
+**REST API:**  
+https://newshub-praca-dyplomowa-production.up.railway.app/api/articles/
+
+Środowisko produkcyjne składa się z sześciu usług:
+
+- `NewsHub-praca-dyplomowa` — aplikacja Django / REST API / GraphQL
+- `Postgres` — produkcyjna baza danych PostgreSQL
+- `Redis` — broker wiadomości Celery i backend cache
+- `celery-worker-rss` — worker obsługujący kolejkę zadań RSS
+- `celery-worker-default` — worker obsługujący domyślną kolejkę Celery
+- `celery-beat` — harmonogram cyklicznych zadań
+
+Workery Celery działają z ograniczoną współbieżnością `--concurrency=2`,
+aby ograniczyć wykorzystanie zasobów środowiska produkcyjnego.
+
+Celery Beat odpowiada za cykliczne uruchamianie pobierania wiadomości RSS.
+Komunikacja pomiędzy Celery Beat i workerami odbywa się przez Redis.
+
+Konfiguracja produkcyjna wykorzystuje zmienne środowiskowe do przechowywania
+danych dostępowych do PostgreSQL i Redis oraz ustawień Django.
+
 ## Dostępne adresy
 
 | Adres | Opis |
@@ -71,7 +108,7 @@ Aplikacja będzie dostępna pod adresem: `http://127.0.0.1:8000/`
 | `/api/articles/` | Lista i zarządzanie artykułami |
 | `/api/categories/` | Lista i zarządzanie kategoriami |
 | `/api/tags/` | Lista i zarządzanie tagami |
-| `/api/sources/` | Lista i zarządzanie źródłami RSS |
+| `/api/source/` | Lista i zarządzanie źródłami RSS |
 | `/api/articles/<id>/like/` | Polubienie / odlubienie artykułu |
 | `/api/auth/users/` | Rejestracja użytkownika (Djoser) |
 | `/api/auth/jwt/create/` | Logowanie — pobranie tokenu JWT |
