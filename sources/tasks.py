@@ -17,6 +17,12 @@ def determine_article_status(source):
 
     return "PENDING"
 
+def can_fetch_source(source):
+    """
+    Sprawdza, czy źródło może być przetwarzane przez agregator RSS.
+    """
+    return source.is_active and source.trust_level != "BLOCKED"
+
 
 @shared_task
 def fetch_feed(source_id):
@@ -27,9 +33,12 @@ def fetch_feed(source_id):
     wielokrotnym uruchomieniu tego samego zadania).
     """
     try:
-        source = Source.objects.get(id=source_id, is_active=True)
+        source = Source.objects.get(id=source_id)
     except Source.DoesNotExist:
-        return f"Source {source_id} not found or inactive"
+        return f"Source {source_id} not found"
+
+    if not can_fetch_source(source):
+        return f"Source '{source.name}' is inactive or blocked"
 
     feed = feedparser.parse(source.rss_url)
     created_count = 0
@@ -62,7 +71,12 @@ def fetch_all_active_feeds():
     Zadanie cykliczne (wywoływane przez Celery Beat) - zleca pobranie
     każdego aktywnego źródła RSS jako osobne zadanie.
     """
-    active_source_ids = Source.objects.filter(is_active=True).values_list("id", flat=True)
+    active_source_ids = Source.objects.filter(
+        is_active=True
+    ).exclude(
+        trust_level="BLOCKED"
+    ).values_list("id", flat=True)
+
     for source_id in active_source_ids:
         fetch_feed.delay(source_id)
     return f"Dispatched fetch for {len(active_source_ids)} sources" 

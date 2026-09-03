@@ -1,7 +1,8 @@
 from django.db import IntegrityError
 from django.test import TestCase
 from .models import Source
-from .tasks import determine_article_status
+from .tasks import determine_article_status, can_fetch_source, fetch_feed
+from articles.models import Article
 
 
 class SourceModelTests(TestCase):
@@ -116,3 +117,59 @@ class SourceBusinessLogicTests(TestCase):
         status = determine_article_status(source)
 
         self.assertEqual(status, "PENDING")
+
+    def test_active_trusted_source_can_be_fetched(self):
+        source = Source(
+            name="Trusted News",
+            rss_url="https://example.com/trusted",
+            is_active=True,
+            trust_level="TRUSTED",
+        )
+
+        self.assertTrue(can_fetch_source(source))
+
+    def test_active_normal_source_can_be_fetched(self):
+        source = Source(
+            name="Normal News",
+            rss_url="https://example.com/normal",
+            is_active=True,
+            trust_level="NORMAL",
+        )
+
+        self.assertTrue(can_fetch_source(source))
+
+    def test_blocked_source_cannot_be_fetched(self):
+        source = Source(
+            name="Blocked News",
+            rss_url="https://example.com/blocked",
+            is_active=True,
+            trust_level="BLOCKED",
+        )
+
+        self.assertFalse(can_fetch_source(source))
+
+    def test_inactive_source_cannot_be_fetched(self):
+        source = Source(
+            name="Inactive News",
+            rss_url="https://example.com/inactive",
+            is_active=False,
+            trust_level="TRUSTED",
+        )
+
+        self.assertFalse(can_fetch_source(source))
+        
+    def test_blocked_source_does_not_create_articles(self):
+        source = Source.objects.create(
+            name="Blocked RSS",
+            rss_url="https://example.com/blocked-feed",
+            is_active=True,
+            trust_level="BLOCKED",
+        )
+
+        result = fetch_feed(source.id)
+
+        self.assertEqual(Article.objects.count(), 0)
+        self.assertEqual(
+            result,
+            "Source 'Blocked RSS' is inactive or blocked",
+        )
