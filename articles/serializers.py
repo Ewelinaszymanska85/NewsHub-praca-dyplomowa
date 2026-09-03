@@ -17,6 +17,22 @@ class TagSerializer(serializers.ModelSerializer):
 class ArticleSerializer(serializers.ModelSerializer):
     category_detail = CategorySerializer(source="category", read_only=True)
     tags_detail = TagSerializer(source="tags", many=True, read_only=True)
+    
+    def validate_source_url(self, value):
+        if not value:
+            return None
+
+        articles = Article.objects.filter(source_url=value)
+
+        if self.instance:
+            articles = articles.exclude(pk=self.instance.pk)
+
+        if articles.exists():
+            raise serializers.ValidationError(
+                "Artykuł z tym adresem URL już istnieje."
+            )
+
+        return value
 
     class Meta:
         model = Article
@@ -35,6 +51,12 @@ class ArticleSerializer(serializers.ModelSerializer):
             "submitted_by",
         ]
         read_only_fields = ["status", "published_at", "source", "submitted_by"] 
+        
+        extra_kwargs = {
+            "source_url": {
+                "validators": [],
+            },
+        }
         
 from .models import Like
 

@@ -85,3 +85,23 @@ class ArticleSerializerTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("title", serializer.errors)
         self.assertIn("content", serializer.errors) 
+        
+    def test_serializer_rejects_duplicate_source_url(self):
+        Article.objects.create(
+            title="Pierwszy artykuł",
+            content="Treść pierwszego artykułu",
+            source_url="https://example.com/article-1",
+        )
+
+        serializer = ArticleSerializer(data={
+            "title": "Drugi artykuł",
+            "content": "Treść drugiego artykułu",
+            "source_url": "https://example.com/article-1",
+        })
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("source_url", serializer.errors)
+        self.assertEqual(
+            str(serializer.errors["source_url"][0]),
+            "Artykuł z tym adresem URL już istnieje.",
+        )

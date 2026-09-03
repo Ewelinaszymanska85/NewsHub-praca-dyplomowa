@@ -47,7 +47,7 @@ class Article(models.Model):
 
     title = models.CharField(max_length=500, verbose_name="Tytuł")
     content = models.TextField(verbose_name="Treść / streszczenie")
-    source_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="Link źródłowy")
+    source_url = models.URLField(max_length=500, blank=True, null=True, unique=True, verbose_name="Link źródłowy")
     published_at = models.DateTimeField(auto_now_add=True, verbose_name="Data publikacji")
 
     status = models.CharField(
