@@ -3,6 +3,8 @@ from django.test import TestCase
 from .models import Source
 from .tasks import determine_article_status, can_fetch_source, fetch_feed
 from articles.models import Article
+from unittest.mock import patch
+from types import SimpleNamespace
 
 
 class SourceModelTests(TestCase):
@@ -173,3 +175,54 @@ class SourceBusinessLogicTests(TestCase):
             result,
             "Source 'Blocked RSS' is inactive or blocked",
         )
+        
+        
+    @patch("sources.tasks.feedparser.parse")
+    def test_trusted_source_creates_approved_article(self, mock_parse):
+        source = Source.objects.create(
+            name="Trusted RSS",
+            rss_url="https://example.com/trusted-feed",
+            is_active=True,
+            trust_level="TRUSTED",
+        )
+
+        mock_parse.return_value.entries = [
+            SimpleNamespace(
+                title="Test article",
+                summary="Test content",
+                link="https://example.com/article-1",
+            )
+        ]
+
+        fetch_feed(source.id)
+
+        article = Article.objects.get(
+            source_url="https://example.com/article-1"
+        )
+
+        self.assertEqual(article.status, "APPROVED")
+
+    @patch("sources.tasks.feedparser.parse")
+    def test_normal_source_creates_pending_article(self, mock_parse):
+        source = Source.objects.create(
+            name="Normal RSS",
+            rss_url="https://example.com/normal-feed",
+            is_active=True,
+            trust_level="NORMAL",
+        )
+
+        mock_parse.return_value.entries = [
+            SimpleNamespace(
+                title="Test article",
+                summary="Test content",
+                link="https://example.com/article-2",
+            )
+        ]
+
+        fetch_feed(source.id)
+
+        article = Article.objects.get(
+            source_url="https://example.com/article-2"
+        )
+
+        self.assertEqual(article.status, "PENDING")
