@@ -5,6 +5,19 @@ from articles.models import Article
 from .models import Source
 
 
+def determine_article_status(source):
+    """
+    Ustala status artykułu na podstawie poziomu zaufania źródła.
+    """
+    if source.trust_level == "TRUSTED":
+        return "APPROVED"
+
+    if source.trust_level == "BLOCKED":
+        return "REJECTED"
+
+    return "PENDING"
+
+
 @shared_task
 def fetch_feed(source_id):
     """
@@ -36,7 +49,7 @@ def fetch_feed(source_id):
             content=getattr(entry, "summary", ""),
             source_url=link,
             source=source,
-            status="APPROVED",  # treści z zaufanych źródeł RSS nie wymagają moderacji
+            status=determine_article_status(source),  
         )
         created_count += 1
 

@@ -1,6 +1,7 @@
 from django.db import IntegrityError
 from django.test import TestCase
 from .models import Source
+from .tasks import determine_article_status
 
 
 class SourceModelTests(TestCase):
@@ -54,4 +55,64 @@ class SourceModelTests(TestCase):
         Source.objects.create(name="Alpha News", rss_url="https://a.com/rss")
 
         names = list(Source.objects.values_list("name", flat=True))
-        self.assertEqual(names, ["Alpha News", "Zebra News"]) 
+        self.assertEqual(names, ["Alpha News", "Zebra News"])
+        
+        
+class SourceBusinessLogicTests(TestCase):
+    """
+    Testy własnej logiki biznesowej dla poziomu zaufania źródła.
+    """
+
+    def test_trusted_source_returns_approved(self):
+        source = Source(
+            name="BBC News",
+            rss_url="https://example.com/trusted-rss",
+            trust_level="TRUSTED",
+        )
+
+        status = determine_article_status(source)
+
+        self.assertEqual(status, "APPROVED")
+
+    def test_normal_source_returns_pending(self):
+        source = Source(
+            name="Standard News",
+            rss_url="https://example.com/normal-rss",
+            trust_level="NORMAL",
+        )
+
+        status = determine_article_status(source)
+
+        self.assertEqual(status, "PENDING")
+
+    def test_blocked_source_returns_rejected(self):
+        source = Source(
+            name="Blocked News",
+            rss_url="https://example.com/blocked-rss",
+            trust_level="BLOCKED",
+        )
+
+        status = determine_article_status(source)
+
+        self.assertEqual(status, "REJECTED")
+
+    def test_default_source_returns_pending(self):
+        source = Source(
+            name="Default News",
+            rss_url="https://example.com/default-rss",
+        )
+
+        status = determine_article_status(source)
+
+        self.assertEqual(status, "PENDING")
+
+    def test_unknown_trust_level_returns_pending(self):
+        source = Source(
+            name="Unknown News",
+            rss_url="https://example.com/unknown-rss",
+            trust_level="UNKNOWN",
+        )
+
+        status = determine_article_status(source)
+
+        self.assertEqual(status, "PENDING")
