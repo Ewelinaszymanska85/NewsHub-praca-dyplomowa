@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Article, Category, Tag
+from datetime import timedelta
+from django.utils import timezone
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -33,6 +35,17 @@ class ArticleSerializer(serializers.ModelSerializer):
             )
 
         return value
+    
+    def validate_published_at(self, value):
+        if not value:
+            return value
+
+        if value < timezone.now() - timedelta(days=7):
+            raise serializers.ValidationError(
+                "Artykuł nie może być starszy niż 7 dni."
+            )
+
+        return value
 
     class Meta:
         model = Article
@@ -50,7 +63,7 @@ class ArticleSerializer(serializers.ModelSerializer):
             "source",
             "submitted_by",
         ]
-        read_only_fields = ["status", "published_at", "source", "submitted_by"] 
+        read_only_fields = ["status", "source", "submitted_by"]
         
         extra_kwargs = {
             "source_url": {

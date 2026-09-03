@@ -1,6 +1,8 @@
 from django.test import TestCase
 from ..models import Article, Category, Tag
 from ..serializers import ArticleSerializer
+from datetime import timedelta
+from django.utils import timezone
 
 
 class ArticleSerializerTests(TestCase):
@@ -105,3 +107,32 @@ class ArticleSerializerTests(TestCase):
             str(serializer.errors["source_url"][0]),
             "Artykuł z tym adresem URL już istnieje.",
         )
+        
+    def test_serializer_rejects_article_older_than_7_days(self):
+        old_date = timezone.now() - timedelta(days=8)
+
+        serializer = ArticleSerializer(data={
+            "title": "Stary artykuł",
+            "content": "Treść starego artykułu",
+            "source_url": "https://example.com/old-article",
+            "published_at": old_date,
+        })
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("published_at", serializer.errors)
+        self.assertEqual(
+            str(serializer.errors["published_at"][0]),
+            "Artykuł nie może być starszy niż 7 dni.",
+        )
+        
+    def test_serializer_accepts_article_newer_than_7_days(self):
+        recent_date = timezone.now() - timedelta(days=2)
+
+        serializer = ArticleSerializer(data={
+            "title": "Nowy artykuł",
+            "content": "Treść nowego artykułu",
+            "source_url": "https://example.com/recent-article",
+            "published_at": recent_date,
+        })
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
