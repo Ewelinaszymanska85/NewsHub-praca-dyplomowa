@@ -50,3 +50,4 @@ python-dotenv==1.1.1
 whitenoise
 pytest
 pytest-django
+beautifulsoup4
