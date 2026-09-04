@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 from rest_framework import status
-from ..models import Article, Notification
+from ..models import Article, Notification, Category
 
 
 class ArticleSubmissionTests(TestCase):
@@ -14,6 +14,7 @@ class ArticleSubmissionTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="TestPass123!")
+        self.category = Category.objects.create(name="Technologia")
 
     def test_anonymous_user_cannot_submit_article(self):
         response = self.client.post('/api/articles/', {
@@ -27,6 +28,7 @@ class ArticleSubmissionTests(TestCase):
         response = self.client.post('/api/articles/', {
             "title": "Zgłoszony artykuł testowy",
             "content": "Treść zgłoszenia",
+            "category": self.category.id,
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -39,6 +41,7 @@ class ArticleSubmissionTests(TestCase):
         self.client.post('/api/articles/', {
             "title": "Artykuł generujący powiadomienie",
             "content": "Treść",
+            "category": self.category.id,
         })
         self.assertTrue(
             Notification.objects.filter(

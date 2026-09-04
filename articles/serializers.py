@@ -46,6 +46,17 @@ class ArticleSerializer(serializers.ModelSerializer):
             )
 
         return value
+    
+    def validate(self, attrs):
+        category = attrs.get("category")
+        tags = attrs.get("tags", [])
+
+        if not category and not tags:
+            raise serializers.ValidationError(
+                "Artykuł musi mieć kategorię lub co najmniej jeden tag."
+            )
+
+        return attrs
 
     class Meta:
         model = Article
