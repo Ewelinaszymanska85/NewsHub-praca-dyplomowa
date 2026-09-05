@@ -1,10 +1,17 @@
 from django.db import IntegrityError
 from django.test import TestCase
-from .models import Source
-from .tasks import determine_article_status, can_fetch_source, fetch_feed
-from articles.models import Article
 from unittest.mock import patch
 from types import SimpleNamespace
+
+from articles.models import Article
+
+from .models import Source
+from .tasks import (
+    determine_article_status,
+    can_fetch_source,
+    extract_published_at,
+    fetch_feed,
+)
 
 
 class SourceModelTests(TestCase):
@@ -13,39 +20,39 @@ class SourceModelTests(TestCase):
     """
 
     def test_source_creation(self):
-        """Sprawdza, czy źródło RSS tworzy się poprawnie z podanymi danymi."""
         source = Source.objects.create(
             name="BBC News",
             rss_url="https://feeds.bbci.co.uk/news/rss.xml",
         )
+
         self.assertEqual(source.name, "BBC News")
-        self.assertEqual(source.rss_url, "https://feeds.bbci.co.uk/news/rss.xml")
+        self.assertEqual(
+            source.rss_url,
+            "https://feeds.bbci.co.uk/news/rss.xml",
+        )
 
     def test_source_is_active_by_default(self):
-        """Nowo utworzone źródło powinno być domyślnie aktywne."""
         source = Source.objects.create(
             name="NASA News",
             rss_url="https://www.nasa.gov/feed/",
         )
+
         self.assertTrue(source.is_active)
 
     def test_source_string_representation(self):
-        """__str__ powinien zwracać nazwę źródła."""
         source = Source.objects.create(
             name="Testowe źródło",
             rss_url="https://example.com/rss",
         )
+
         self.assertEqual(str(source), "Testowe źródło")
 
     def test_source_rss_url_must_be_unique(self):
-        """
-        Dwa źródła nie mogą mieć tego samego adresu RSS - baza danych
-        powinna wymusić ten warunek (unique=True w modelu).
-        """
         Source.objects.create(
             name="Pierwsze źródło",
             rss_url="https://duplicate.com/rss",
         )
+
         with self.assertRaises(IntegrityError):
             Source.objects.create(
                 name="Drugie źródło",
@@ -53,17 +60,28 @@ class SourceModelTests(TestCase):
             )
 
     def test_sources_ordered_by_name(self):
-        """Źródła powinny być domyślnie sortowane alfabetycznie po nazwie."""
-        Source.objects.create(name="Zebra News", rss_url="https://z.com/rss")
-        Source.objects.create(name="Alpha News", rss_url="https://a.com/rss")
+        Source.objects.create(
+            name="Zebra News",
+            rss_url="https://z.com/rss",
+        )
+        Source.objects.create(
+            name="Alpha News",
+            rss_url="https://a.com/rss",
+        )
 
-        names = list(Source.objects.values_list("name", flat=True))
-        self.assertEqual(names, ["Alpha News", "Zebra News"])
-        
-        
+        names = list(
+            Source.objects.values_list("name", flat=True)
+        )
+
+        self.assertEqual(
+            names,
+            ["Alpha News", "Zebra News"],
+        )
+
+
 class SourceBusinessLogicTests(TestCase):
     """
-    Testy własnej logiki biznesowej dla poziomu zaufania źródła.
+    Testy własnej logiki biznesowej źródeł RSS.
     """
 
     def test_trusted_source_returns_approved(self):
@@ -159,7 +177,7 @@ class SourceBusinessLogicTests(TestCase):
         )
 
         self.assertFalse(can_fetch_source(source))
-        
+
     def test_blocked_source_does_not_create_articles(self):
         source = Source.objects.create(
             name="Blocked RSS",
@@ -170,15 +188,21 @@ class SourceBusinessLogicTests(TestCase):
 
         result = fetch_feed(source.id)
 
-        self.assertEqual(Article.objects.count(), 0)
+        self.assertEqual(
+            Article.objects.count(),
+            0,
+        )
+
         self.assertEqual(
             result,
             "Source 'Blocked RSS' is inactive or blocked",
         )
-        
-        
+
     @patch("sources.tasks.feedparser.parse")
-    def test_trusted_source_creates_approved_article(self, mock_parse):
+    def test_trusted_source_creates_approved_article(
+        self,
+        mock_parse,
+    ):
         source = Source.objects.create(
             name="Trusted RSS",
             rss_url="https://example.com/trusted-feed",
@@ -200,10 +224,16 @@ class SourceBusinessLogicTests(TestCase):
             source_url="https://example.com/article-1"
         )
 
-        self.assertEqual(article.status, "APPROVED")
+        self.assertEqual(
+            article.status,
+            "APPROVED",
+        )
 
     @patch("sources.tasks.feedparser.parse")
-    def test_normal_source_creates_pending_article(self, mock_parse):
+    def test_normal_source_creates_pending_article(
+        self,
+        mock_parse,
+    ):
         source = Source.objects.create(
             name="Normal RSS",
             rss_url="https://example.com/normal-feed",
@@ -225,4 +255,61 @@ class SourceBusinessLogicTests(TestCase):
             source_url="https://example.com/article-2"
         )
 
-        self.assertEqual(article.status, "PENDING")
+        self.assertEqual(
+            article.status,
+            "PENDING",
+        )
+
+    def test_extract_published_at_uses_published_field(self):
+        entry = SimpleNamespace(
+            published="2026-09-05T12:00:00Z"
+        )
+
+        result = extract_published_at(entry)
+
+        self.assertEqual(
+            result.isoformat(),
+            "2026-09-05T12:00:00+00:00",
+        )
+
+    def test_extract_published_at_uses_updated_as_fallback(self):
+        entry = SimpleNamespace(
+            updated="2026-09-05T14:30:00Z"
+        )
+
+        result = extract_published_at(entry)
+
+        self.assertEqual(
+            result.isoformat(),
+            "2026-09-05T14:30:00+00:00",
+        )
+
+
+    @patch("sources.tasks.feedparser.parse")
+    def test_fetch_feed_saves_published_date_from_rss(self, mock_parse):
+        source = Source.objects.create(
+            name="RSS z datą",
+            rss_url="https://example.com/feed-with-date",
+            is_active=True,
+            trust_level="TRUSTED",
+        )
+
+        mock_parse.return_value.entries = [
+            SimpleNamespace(
+                title="Artykuł z datą",
+                summary="Treść artykułu",
+                link="https://example.com/article-with-date",
+                published="2026-09-05T10:00:00Z",
+            )
+        ]
+
+        fetch_feed(source.id)
+
+        article = Article.objects.get(
+            source_url="https://example.com/article-with-date"
+        )
+
+        self.assertEqual(
+            article.published_at.isoformat(),
+            "2026-09-05T10:00:00+00:00",
+        )

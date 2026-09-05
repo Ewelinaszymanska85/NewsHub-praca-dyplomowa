@@ -1,6 +1,7 @@
 import feedparser
 from celery import shared_task
 from django.utils.dateparse import parse_datetime
+
 from articles.models import Article
 from .models import Source
 
@@ -17,6 +18,7 @@ def determine_article_status(source):
 
     return "PENDING"
 
+
 def can_fetch_source(source):
     """
     Sprawdza, czy źródło może być przetwarzane przez agregator RSS.
@@ -24,13 +26,35 @@ def can_fetch_source(source):
     return source.is_active and source.trust_level != "BLOCKED"
 
 
+def extract_published_at(entry):
+    """
+    Odczytuje datę publikacji z wpisu RSS.
+
+    Najpierw próbuje pola published, a jeśli go nie ma,
+    korzysta z pola updated.
+    """
+    for field_name in ("published", "updated"):
+        value = getattr(entry, field_name, None)
+
+        if not value:
+            continue
+
+        published_at = parse_datetime(value)
+
+        if published_at:
+            return published_at
+
+    return None
+
+
 @shared_task
 def fetch_feed(source_id):
     """
     Pobiera i parsuje pojedyncze źródło RSS, tworząc nowe artykuły
-    dla wpisów, których jeszcze nie ma w bazie (idempotencja -
-    sprawdzenie unikalności po source_url zapobiega duplikatom przy
-    wielokrotnym uruchomieniu tego samego zadania).
+    dla wpisów, których jeszcze nie ma w bazie.
+
+    Sprawdzenie unikalności po source_url zapobiega duplikatom przy
+    wielokrotnym uruchomieniu tego samego zadania.
     """
     try:
         source = Source.objects.get(id=source_id)
@@ -45,21 +69,26 @@ def fetch_feed(source_id):
 
     for entry in feed.entries:
         link = getattr(entry, "link", None)
+
         if not link:
             continue
 
         # Idempotencja: pomijamy wpis, jeśli artykuł o tym samym
-        # linku źródłowym już istnieje w bazie
+        # linku źródłowym już istnieje w bazie.
         if Article.objects.filter(source_url=link).exists():
             continue
+
+        published_at = extract_published_at(entry)
 
         Article.objects.create(
             title=getattr(entry, "title", "Bez tytułu"),
             content=getattr(entry, "summary", ""),
             source_url=link,
             source=source,
-            status=determine_article_status(source),  
+            status=determine_article_status(source),
+            published_at=published_at,
         )
+
         created_count += 1
 
     return f"Source '{source.name}': created {created_count} new articles"
@@ -68,15 +97,18 @@ def fetch_feed(source_id):
 @shared_task
 def fetch_all_active_feeds():
     """
-    Zadanie cykliczne (wywoływane przez Celery Beat) - zleca pobranie
-    każdego aktywnego źródła RSS jako osobne zadanie.
+    Zadanie cykliczne wywoływane przez Celery Beat.
+
+    Zleca pobranie każdego aktywnego i niezablokowanego
+    źródła RSS jako osobne zadanie.
     """
-    active_source_ids = Source.objects.filter(
-        is_active=True
-    ).exclude(
-        trust_level="BLOCKED"
-    ).values_list("id", flat=True)
+    active_source_ids = (
+        Source.objects.filter(is_active=True)
+        .exclude(trust_level="BLOCKED")
+        .values_list("id", flat=True)
+    )
 
     for source_id in active_source_ids:
         fetch_feed.delay(source_id)
-    return f"Dispatched fetch for {len(active_source_ids)} sources" 
+
+    return f"Dispatched fetch for {len(active_source_ids)} sources"
