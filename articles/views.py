@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .models import Article, Category, Tag, Like
 from .serializers import ArticleSerializer, CategorySerializer, TagSerializer, ArticleUrlImportSerializer
 from .scrapers import fetch_article_data, NoScraperMatched, ScrapingError
-
+from .categorization import categorize_article
 
 @extend_schema(tags=["Artykuły"])
 class ArticleViewSet(viewsets.ModelViewSet):
@@ -109,10 +109,24 @@ def fetch_article_from_url(request):
             status=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
+    category = categorize_article(
+        title=data.get("title", ""),
+        content=data.get("content", ""),
+        use_ai=True,
+    )
+
     return Response(
         {
             "source_url": url,
             **data,
+            "suggested_category": (
+                {
+                    "id": category.id,
+                    "name": category.name,
+                }
+                if category
+                else None
+            ),
         },
         status=http_status.HTTP_200_OK,
     )
