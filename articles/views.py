@@ -5,11 +5,13 @@ from rest_framework import status as http_status
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from drf_spectacular.utils import extend_schema, OpenApiResponse
+
 from .models import Article, Category, Tag, Like
-from .serializers import ArticleSerializer, CategorySerializer, TagSerializer
+from .serializers import ArticleSerializer, CategorySerializer, TagSerializer, ArticleUrlImportSerializer
+from .scrapers import fetch_article_data, NoScraperMatched, ScrapingError
 
 
-@extend_schema(tags=["Artykuły"]) 
+@extend_schema(tags=["Artykuły"])
 class ArticleViewSet(viewsets.ModelViewSet):
     """
     API endpoint do przeglądania i zarządzania artykułami.
@@ -68,7 +70,52 @@ class ArticleViewSet(viewsets.ModelViewSet):
         - ustawiamy status na PENDING (wymaga moderacji)
         - przypisujemy zalogowanego użytkownika jako submitted_by
         """
-        serializer.save(status="PENDING", submitted_by=self.request.user)
+        serializer.save(
+            status="PENDING",
+            submitted_by=self.request.user,
+        )
+
+
+@extend_schema(
+    summary="Pobierz dane artykułu z URL",
+    description=(
+        "Użytkownik podaje adres URL artykułu. "
+        "Aplikacja rozpoznaje domenę, wybiera odpowiedni scraper "
+        "i próbuje pobrać tytuł, datę publikacji oraz opis."
+    ),
+    request=ArticleUrlImportSerializer,
+    tags=["Artykuły"],
+)
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def fetch_article_from_url(request):
+    serializer = ArticleUrlImportSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    url = serializer.validated_data["url"]
+
+    try:
+        data = fetch_article_data(url)
+
+    except NoScraperMatched as exc:
+        return Response(
+            {"error": str(exc)},
+            status=http_status.HTTP_400_BAD_REQUEST,
+        )
+
+    except ScrapingError as exc:
+        return Response(
+            {"error": str(exc)},
+            status=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    return Response(
+        {
+            "source_url": url,
+            **data,
+        },
+        status=http_status.HTTP_200_OK,
+    )
 
 
 @extend_schema(tags=["Kategorie"])
@@ -102,7 +149,7 @@ class TagViewSet(viewsets.ModelViewSet):
         404: OpenApiResponse(description="Artykuł nie istnieje"),
     },
 )
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
 def like_article(request, article_id):
     """
@@ -114,14 +161,36 @@ def like_article(request, article_id):
     polubienia jest niemożliwa na poziomie bazy danych.
     """
     try:
-        article = Article.objects.get(id=article_id, status="APPROVED")
-    except Article.DoesNotExist:
-        return Response({"error": "Artykuł nie istnieje"}, status=http_status.HTTP_404_NOT_FOUND)
+        article = Article.objects.get(
+            id=article_id,
+            status="APPROVED",
+        )
 
-    like, created = Like.objects.get_or_create(user=request.user, article=article)
+    except Article.DoesNotExist:
+        return Response(
+            {"error": "Artykuł nie istnieje"},
+            status=http_status.HTTP_404_NOT_FOUND,
+        )
+
+    like, created = Like.objects.get_or_create(
+        user=request.user,
+        article=article,
+    )
 
     if not created:
         like.delete()
-        return Response({"liked": False, "message": "Polubienie usunięte"})
 
-    return Response({"liked": True, "message": "Artykuł polubiony"}, status=http_status.HTTP_201_CREATED)
+        return Response(
+            {
+                "liked": False,
+                "message": "Polubienie usunięte",
+            }
+        )
+
+    return Response(
+        {
+            "liked": True,
+            "message": "Artykuł polubiony",
+        },
+        status=http_status.HTTP_201_CREATED,
+    )

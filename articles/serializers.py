@@ -19,7 +19,7 @@ class TagSerializer(serializers.ModelSerializer):
 class ArticleSerializer(serializers.ModelSerializer):
     category_detail = CategorySerializer(source="category", read_only=True)
     tags_detail = TagSerializer(source="tags", many=True, read_only=True)
-    
+
     def validate_source_url(self, value):
         if not value:
             return None
@@ -35,7 +35,7 @@ class ArticleSerializer(serializers.ModelSerializer):
             )
 
         return value
-    
+
     def validate_published_at(self, value):
         if not value:
             return value
@@ -46,7 +46,7 @@ class ArticleSerializer(serializers.ModelSerializer):
             )
 
         return value
-    
+
     def validate(self, attrs):
         category = attrs.get("category")
         tags = attrs.get("tags", [])
@@ -75,13 +75,13 @@ class ArticleSerializer(serializers.ModelSerializer):
             "submitted_by",
         ]
         read_only_fields = ["status", "source", "submitted_by"]
-        
+
         extra_kwargs = {
             "source_url": {
                 "validators": [],
             },
         }
-        
+
 from .models import Like
 
 
@@ -89,4 +89,8 @@ class LikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Like
         fields = ["id", "article", "created_at"]
-        read_only_fields = ["created_at"]    
+        read_only_fields = ["created_at"]
+
+
+class ArticleUrlImportSerializer(serializers.Serializer):
+    url = serializers.URLField()
