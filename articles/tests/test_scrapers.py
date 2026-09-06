@@ -29,7 +29,7 @@ def test_match_scraper_recognizes_supported_domains(url, expected_scraper):
 def test_match_scraper_rejects_unsupported_domain():
     with pytest.raises(NoScraperMatched):
         match_scraper("https://example.com/news/article")
-        
+
 def test_bbc_scraper_extracts_article_data_from_html():
     html = """
     <html>
@@ -67,7 +67,7 @@ def test_nasa_scraper_extracts_article_data_from_html():
     assert data["title"] == "Testowy artykuł NASA"
     assert data["published_at"] == "2026-09-04T12:30:00Z"
     assert data["content"] == "Opis artykułu NASA"
-    
+
 from articles.scrapers import ScrapingError
 
 def test_bbc_scraper_raises_error_when_title_is_missing():
@@ -81,7 +81,7 @@ def test_bbc_scraper_raises_error_when_title_is_missing():
 
     with pytest.raises(ScrapingError):
         scrap_bbc_news(html)
-        
+
 @patch("articles.scrapers.requests.get")
 def test_fetch_article_data_downloads_page_and_uses_matching_scraper(mock_get):
     mock_response = Mock()
@@ -108,4 +108,4 @@ def test_fetch_article_data_downloads_page_and_uses_matching_scraper(mock_get):
     mock_get.assert_called_once_with(
         "https://www.bbc.com/news/test",
         timeout=10,
-    )          
+    )

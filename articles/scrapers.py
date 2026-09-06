@@ -82,7 +82,7 @@ def match_scraper(url):
             raise NoScraperMatched(
                 f"Brak scrapera dla domeny: {hostname}"
             )
-            
+
 def fetch_article_data(url):
     """
     Pobiera stronę artykułu i uruchamia scraper dopasowany do domeny.
@@ -92,4 +92,4 @@ def fetch_article_data(url):
     response = requests.get(url, timeout=10)
     response.raise_for_status()
 
-    return scraper(response.text)          
+    return scraper(response.text)
