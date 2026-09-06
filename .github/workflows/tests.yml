@@ -59,4 +59,4 @@ jobs:
           pip install -r requirements.txt
 
       - name: Uruchomienie testów
-        run: python manage.py test
+        run: pytest

@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 from rest_framework import status
+from ..models import Category
 
 
 class ArticleValidationTests(TestCase):
@@ -13,6 +14,7 @@ class ArticleValidationTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username="validator", password="TestPass123!")
         self.client.force_authenticate(user=self.user)
+        self.category = Category.objects.create(name="Technologia")
 
     def test_article_without_title_is_rejected(self):
         """
@@ -59,6 +61,6 @@ class ArticleValidationTests(TestCase):
             "title": "Poprawny artykuł",
             "content": "Poprawna treść",
             "source_url": "https://example.com/news/1",
+            "category": self.category.id,
         })
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED) 
-        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)

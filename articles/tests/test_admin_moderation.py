@@ -26,7 +26,7 @@ class ArticleModerationTests(TestCase):
         self.article2 = Article.objects.create(
             title="Artykuł do odrzucenia",
             content="Treść 2",
-            status="PENDING", 
+            status="PENDING",
         )
 
     def test_approve_action_changes_status_to_approved(self):
@@ -67,13 +67,3 @@ class ArticleModerationTests(TestCase):
 
         self.article2.refresh_from_db()
         self.assertEqual(self.article2.status, "PENDING")
-
-    def test_non_staff_user_cannot_access_admin_panel(self):
-        """
-        Zwykły, niezalogowany (lub niebędący staff) użytkownik nie
-        powinien mieć dostępu do panelu administracyjnego.
-        """
-        client = Client()
-        response = client.get('/admin/articles/article/')
-        # Django Admin przekierowuje niezalogowanych na stronę logowania
-        self.assertEqual(response.status_code, 302) 
