@@ -47,4 +47,4 @@ class ArticleSubmissionTests(TestCase):
             Notification.objects.filter(
                 article__title="Artykuł generujący powiadomienie"
             ).exists()
-        ) 
+        )

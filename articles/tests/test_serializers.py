@@ -87,8 +87,8 @@ class ArticleSerializerTests(TestCase):
 
         self.assertFalse(serializer.is_valid())
         self.assertIn("title", serializer.errors)
-        self.assertIn("content", serializer.errors) 
-        
+        self.assertIn("content", serializer.errors)
+
     def test_serializer_rejects_duplicate_source_url(self):
         Article.objects.create(
             title="Pierwszy artykuł",
@@ -108,7 +108,7 @@ class ArticleSerializerTests(TestCase):
             str(serializer.errors["source_url"][0]),
             "Artykuł z tym adresem URL już istnieje.",
         )
-        
+
     def test_serializer_rejects_article_older_than_7_days(self):
             old_date = timezone.now() - timedelta(days=8)
 

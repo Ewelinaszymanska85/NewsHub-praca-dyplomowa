@@ -63,5 +63,4 @@ class ArticleValidationTests(TestCase):
             "source_url": "https://example.com/news/1",
             "category": self.category.id,
         })
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED) 
-        
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
